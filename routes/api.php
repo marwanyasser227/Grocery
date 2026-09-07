@@ -286,11 +286,11 @@ Route::prefix('categories')->group(function () {
     Route::get('/{category}/meals', [CategoryController::class, 'meals']);
 });
 
-// Subcategories routes
+//Subcategories routes
 Route::prefix('subcategories')->group(function () {
     Route::get('/', [SubcategoryController::class, 'index']);
-    Route::get('/{id}', [SubcategoryController::class, 'show']);
-    Route::get('/{id}/meals', [SubcategoryController::class, 'meals']);
+    Route::get('/{subcategory}', [SubcategoryController::class, 'show']);
+    Route::get('/{subcategory}/meals', [SubcategoryController::class, 'meals']);
 });
 Route::get('/faqs', [FaqController::class, 'index']);
 Route::get('/pages', [StaticPageController::class, 'index']);
