@@ -1,8 +1,19 @@
 <?php
-
+declare(strict_types =1);
 namespace App\Http\Controllers\Api;
+//! actions 
 
+use App\Actions\Auth\ChangePassword;
+use App\Actions\Auth\DeleteAccount;
+use App\Actions\Auth\LoginUser;
+use App\Actions\Auth\LogoutUser;
+use App\Actions\Auth\RegisterUser;
+use App\Actions\Auth\ResetPassword;
+use App\Actions\Auth\UserForgetPassword;
+use App\Actions\Auth\VerifyOtp;
 use App\Http\Controllers\Controller;
+
+//! requests classes
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\DeleteAccountRequest;
 use App\Http\Requests\ForgotPasswordRequest;
@@ -10,217 +21,121 @@ use App\Http\Requests\LoginRequest;
 use App\Http\Requests\RegisterRequest;
 use App\Http\Requests\ResetPasswordRequest;
 use App\Http\Requests\VerifyOtpRequest;
-use App\Services\AuthService;
+
+//! resource of user
+use App\Http\Resources\UserResource;
+
+//! facades 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Traits\V1\ApiResponse;
+
 class AuthController extends Controller
 {
-    use ApiResponse;
-
-    public function __construct(
-        protected AuthService $authService
-    ) {}
+    use \App\Traits\ApiResponse;
 
     /**
      * Register a new user
      */
-    public function register(RegisterRequest $request): JsonResponse
+    public function register(RegisterRequest $request, RegisterUser $action): JsonResponse
     {
         try {
-            $result = $this->authService->register($request->validated());
 
-            return self::successResponse(
+            $result = $action->handle($request->validated());
+            return static::success(
                 'Registration successful',
                 [
-                    'user' => [
-                        'id' => $result['user']->id,
-                        'username' => $result['user']->username,
-                        'email' => $result['user']->email,
-                        'phone' => $result['user']->phone,
-                        'created_at' => $result['user']->created_at,
-                    ],
-                    'token' => $result['token'],
+                    'user' => new UserResource($result['user']),
+                    'token' => $result['token']
                 ],
                 201
             );
         } catch (\Exception $e) {
-        return self::errorResponse("Registration failed.",500);
+            return static::error("Registration failed.",  $e, 500);
         }
-
     }
 
     /**
      * Login user
      */
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginRequest $request, LoginUser $action): JsonResponse
     {
-        try {
-            $result = $this->authService->login(
-                $request->input('login'),
-                $request->input('password')
-            );
+        $result = $action->handle($request->validated()); //! return user and token
 
-            // return response()->json([
-            //     'success' => true,
-            //     'message' => 'Login successful',
-            //     'data' => [
-            //         'user' => [
-            //             'id' => $result['user']->id,
-            //             'username' => $result['user']->username,
-            //             'email' => $result['user']->email,
-            //             'phone' => $result['user']->phone,
-            //         ],
-            //         'token' => $result['token'],
-            //     ],
-            // ]);
-            return self::SuccessResponse("Login Successfully",[
-                "user"=>[
-                    "id"=>$result["user"]->id,
-                    "email"=>$result["user"]->email,
-                    "phone"=>$result["user"]->phone
-                ],
-                "token"=>$result["token"],
-            ],200);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'Login failed',
-            //     'errors' => $e->errors(),
-            // ], 401);
-            return self::errorResponse("Login Failed",null,401);
-
-        } catch (\Exception $e) {
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'Login failed',
-            //     'error' => $e->getMessage(),
-            // ], 500);
-            self::errorResponse("Login Failed",500);
-        }
+        return static::success(
+            'Login successful',
+            [
+                'user' => new UserResource($result['user']),
+                'token' => $result['token'],
+            ]
+        );
     }
-
     /**
      * Logout user
      */
-    public function logout(Request $request): JsonResponse
+    public function logout(Request $request, LogoutUser $action): JsonResponse
     {
         try {
-            $this->authService->logout($request->user());
+            $action->handle($request->user());
 
-            // return response()->json([
-            //     'success' => true,
-            //     'message' => 'Logout successful',
-            // ]);
-            return self::successResponse("Logout successfull",null,200);
-
+            return self::success("Logout successfull", null, 200);
         } catch (\Exception $e) {
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'Logout failed',
-            //     'error' => $e->getMessage(),
-            // ], 500);
-            return self::errorResponse("Logout Failed",null,500);
+
+            return self::error("Logout Failed", null, 500);
         }
     }
 
     /**
      * Forgot password - send OTP
      */
-    public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
+    public function forgotPassword(ForgotPasswordRequest $request, UserForgetPassword $action): JsonResponse
     {
 
         try {
-            $this->authService->forgotPassword($request->input('identifier'));
-
-            // return response()->json([
-            //     'success' => true,
-            //     'message' => 'OTP sent successfully. Please check your email or phone.',
-            // ]);
-            return self::successResponse("OTP sent successfully . Please check your email",null,200);
+            $action->handle($request->validated());
+            return self::success("OTP sent successfully . Please check your email", null, 200);
         } catch (\Exception $e) {
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'Failed to send OTP',
-            //     'error' => $e->getMessage(),
-            // ], 500);
-            return self::errorResponse("Failed to send OTP",null,500);
+            return self::error("Failed to send OTP", null, 500);
         }
     }
 
     /**
      * Verify OTP
      */
-    public function verifyOtp(VerifyOtpRequest $request): JsonResponse
+    public function verifyOtp(VerifyOtpRequest $request, VerifyOtp $action): JsonResponse
     {
         try {
-            $isValid = $this->authService->verifyOtp(
-                $request->input('identifier'),
-                $request->input('otp')
+            $isValid = $action->handle(
+                $request->validated()
             );
 
             if (! $isValid) {
-                // return response()->json([
-                //     'success' => false,
-                //     'message' => 'Invalid or expired OTP',
-                // ], 400);
-                return self::errorResponse("Invalid or expired OTP", null, 400);
+
+                return self::error("Invalid or expired OTP", null, 400);
             }
 
-            // return response()->json([
-            //     'success' => true,
-            //     'message' => 'OTP verified successfully',
-            // ]);
-
-            return self::successResponse("OTP verified successfully", null, 200);
-
+            return self::success("OTP verified successfully", null, 200);
         } catch (\Exception $e) {
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'OTP verification failed',
-            //     'error' => $e->getMessage(),
-            // ], 500);
-            return self::errorResponse("OTP verification failed", null, 500);
+
+            return self::error("OTP verification failed", null, 500);
         }
     }
 
     /**
      * Reset password
      */
-    public function resetPassword(ResetPasswordRequest $request): JsonResponse
+    public function resetPassword(ResetPasswordRequest $request, ResetPassword $action): JsonResponse
     {
         try {
-            $this->authService->resetPassword(
-                $request->input('identifier'),
-                $request->input('otp'),
-                $request->input('password')
-            );
+            $action->handle($request->validated());
 
-            // return response()->json([
-            //     'success' => true,
-            //     'message' => 'Password reset successfully',
-            // ]);
-            return self::successResponse("Password reset successfully", null, 200);
-
+            return self::success("Password reset successfully", null, 200);
         } catch (\Illuminate\Validation\ValidationException $e) {
 
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'Password reset failed',
-            //     'errors' => $e->errors(),
-            // ], 400);
-
-            return self::errorResponse("Password reset failed", null, 400);
-
+            return self::error("Password reset failed", $e, 400);
         } catch (\Exception $e) {
 
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'Password reset failed',
-            //     'error' => $e->getMessage(),
             // ], 500);
-            self::errorResponse("Password reset failed", null, 500);
+            return self::error("Password reset failed", $e, 500);
         }
     }
 
@@ -229,87 +144,56 @@ class AuthController extends Controller
      */
     public function me(Request $request): JsonResponse
     {
-        // return response()->json([
-        //     'success' => true,
-        //     'data' => [
-        //         'user' => [
-        //             'id' => $request->user()->id,
-        //             'username' => $request->user()->username,
-        //             'email' => $request->user()->email,
-        //             'phone' => $request->user()->phone,
-        //             'email_verified' => $request->user()->email_verified,
-        //             'phone_verified' => $request->user()->phone_verified,
-        //             'created_at' => $request->user()->created_at,
-        //         ],
-        //     ],
-        // ]);
-
-        return self::successResponse(
+        return self::success(
             "User retrieved successfully",
             [
-                'user' => [
-                    'id' => $request->user()->id,
-                    'username' => $request->user()->username,
-                    'email' => $request->user()->email,
-                    'phone' => $request->user()->phone,
-                    'email_verified' => $request->user()->email_verified,
-                    'phone_verified' => $request->user()->phone_verified,
-                    'created_at' => $request->user()->created_at,
-                ],
+                'user' => new UserResource($request->user()),
             ],
             200
         );
     }
 
-    public function deleteAccount(DeleteAccountRequest $request): JsonResponse
-    {
+    public function deleteAccount(
+        DeleteAccountRequest $request,
+        DeleteAccount $action
+    ): JsonResponse {
         try {
-            $this->authService->deleteAccount($request->user());
-        } catch (\Exception $e) {
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'Failed to delete account',
-            //     'error' => $e->getMessage(),
-            // ], 500);
-            return self::errorResponse("Failed to delete account", null, 500);
-        }
+            $action->handle($request->user());
 
-        // return response()->json([
-        //     'success' => true,
-        //     'message' => 'Account deleted successfully',
-        // ]);
-        return self::successResponse("Account deleted successfully", null, 200);
+            return self::success(
+                "Account deleted successfully"
+            );
+        } catch (\Exception $e) {
+            return self::error(
+                "Failed to delete account",
+                null,
+                500
+            );
+        }
     }
 
     /**
      * Change password for authenticated user
      */
-    public function changePassword(ChangePasswordRequest $request): JsonResponse
-    {
+    public function changePassword(
+        ChangePasswordRequest $request,
+        ChangePassword $action
+    ): JsonResponse {
         try {
-            $user = $request->user();
+            $action->handle(
+                $request->user(),
+                $request->validated()
+            );
 
-            // Let the User model's "hashed" cast hash the plain password once (avoid double hashing).
-            $user->update([
-                'password' => $request->input('password'),
-            ]);
-
-            // Revoke all tokens except the current one (optional - for security)
-            // $user->tokens()->where('id', '!=', $request->user()->currentAccessToken()->id)->delete();
-
-            // return response()->json([
-            //     'success' => true,
-            //     'message' => 'Password changed successfully',
-            // ]);
-            return self::successResponse("Password changed successfully", null, 200);
-
+            return self::success(
+                "Password changed successfully"
+            );
         } catch (\Exception $e) {
-            // return response()->json([
-            //     'success' => false,
-            //     'message' => 'Failed to change password',
-            //     'error' => $e->getMessage(),
-            // ], 500);
-            return self::errorResponse("Failed to change password");
+            return self::error(
+                "Failed to change password",
+                $e,
+                500
+            );
         }
     }
 }

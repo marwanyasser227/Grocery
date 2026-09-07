@@ -2,7 +2,7 @@
 namespace App\Traits\V1;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-trait ApiResponse
+trait ApiReponse
 {
     public static function successResponse($message = null, $result = null, $code = 200):JsonResponse
     {
