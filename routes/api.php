@@ -53,6 +53,7 @@ use App\Jobs\SendInvoiceJob;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
 Route::get("/send-email", function (Request $request) {
     $email = $request->query('email', 'omar-elsayed@example.com');
 
@@ -63,12 +64,12 @@ Route::get("/send-email", function (Request $request) {
 
     return response()->json([
         "message" => "Email job dispatched successfully",
-        "email" => $email, 
+        "email" => $email,
     ]);
 });
 
-Route::prefix("v1")->group(function(){
-   Route::get("/meals",[MealController::class,"index"]);
+Route::prefix("v1")->group(function () {
+    Route::get("/meals", [MealController::class, "index"]);
 });
 
 
@@ -86,13 +87,13 @@ Route::get('/send-email', function () {
     return response()->json(['message' => 'Invoice email dispatched']);
 });
 
-    
+
 Route::get('/send-invoice', function () {
 
-sendInvoiceJob::dispatch(
+    sendInvoiceJob::dispatch(
 
-    'samiralsaied07@gmail.com',
-);
+        'samiralsaied07@gmail.com',
+    );
 
     return response()->json([
         'message' => 'Job queued successfully'
@@ -101,12 +102,8 @@ sendInvoiceJob::dispatch(
 
 Route::prefix('v1')->group(function () {
     Route::get('/meals', [ApiMealController::class, 'index']);
-         Route::get('/categories', [ApiCategoryController::class, 'index']);
+    Route::get('/categories', [ApiCategoryController::class, 'index']);
     Route::get('/faqs', [ApiFaqController::class, 'index']);
-
-
-
-
 });
 
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
@@ -266,7 +263,6 @@ Route::prefix('meals')->group(function () {
     Route::get('/recommendations', [MealController::class, 'recommendations']);
     Route::get('/', [MealController::class, 'index']);
     Route::get('/{id}', [MealController::class, 'show']);
-
 });
 Route::get('/new-products', [MealController::class, 'newProducts']);
 Route::get('best-sells', [MealController::class, 'bestSells']);
@@ -283,10 +279,11 @@ Route::prefix('offers')->group(function () {
     Route::get('/validate', [OfferController::class, 'validateOffer']);
     Route::get('/{code}', [OfferController::class, 'showByCode']);
 });
+// Categories routes
 Route::prefix('categories')->group(function () {
     Route::get('/', [CategoryController::class, 'index']);
-    Route::get('/{id}', [CategoryController::class, 'show']);
-    Route::get('/{id}/meals', [CategoryController::class, 'meals']);
+    Route::get('/{category}', [CategoryController::class, 'show']);
+    Route::get('/{category}/meals', [CategoryController::class, 'meals']);
 });
 
 // Subcategories routes
