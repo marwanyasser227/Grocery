@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MealController as ApiMealController;
 use Illuminate\Support\Facades\Route;
 use App\Traits\V1;
+use App\Http\Controllers\Api\ReviewController;
 
 use App\Jobs\SendInvoiceJob;
 /*
@@ -305,4 +306,19 @@ Route::get('/health', function () {
         'message' => 'API is running',
         'timestamp' => now(),
     ]);
+});
+// Public reviews
+Route::prefix('reviews')->group(function () {
+    Route::get('/', [ReviewController::class, 'index']);
+    Route::get('/meal/{mealId}/stats', [ReviewController::class, 'getMealReviewStats']);
+    Route::get('/meal/{meal}', [ReviewController::class, 'getMealReviews']);
+    Route::get('/{review}', [ReviewController::class, 'show']);
+});
+
+// Protected review
+Route::middleware('auth:sanctum')->prefix('reviews')->group(function () {
+    Route::post('/', [ReviewController::class, 'store']);
+    Route::get('/user/list', [ReviewController::class, 'getUserReviews']);
+    Route::put('/{review}', [ReviewController::class, 'update']);
+    Route::delete('/{review}', [ReviewController::class, 'destroy']);
 });
