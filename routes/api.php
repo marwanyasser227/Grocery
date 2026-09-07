@@ -26,23 +26,26 @@ use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SmartListController;
 use App\Http\Controllers\Api\SpecialNoteController;
 use App\Http\Controllers\Api\StaticPageController;
-use App\Http\Controllers\Api\StripeCheckoutController;
 use App\Http\Controllers\Api\StripeController;
 use App\Http\Controllers\Api\StripeWebhookController;
 use App\Http\Controllers\Api\SubcategoryController;
-use App\Jobs\CreateInvoiceJob;
-use App\Jobs\SendEmailJob;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Bus;
 use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\UserAppSettingsController;
 use App\Http\Controllers\Api\V1\CategoryController as ApiCategoryController;
 use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MealController as ApiMealController;
-use Illuminate\Support\Facades\Route;
-use App\Traits\V1;
-
+use App\Http\Controllers\Api\AddMealToSmartListController;
+use App\Http\Controllers\Api\CreateStripeCheckoutSessionController;
+use App\Http\Controllers\Api\RemoveMealFromSmartListController;
+use App\Http\Controllers\Api\TrackOrderController;
+use App\Http\Controllers\Api\VerifyStripeCheckoutSessionController;
+use App\Jobs\CreateInvoiceJob;
+use App\Jobs\SendEmailJob;
 use App\Jobs\SendInvoiceJob;
+use App\Traits\V1;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Route;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -53,6 +56,7 @@ use App\Jobs\SendInvoiceJob;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
 Route::get("/send-email", function (Request $request) {
     $email = $request->query('email', 'omar-elsayed@example.com');
 
@@ -63,12 +67,12 @@ Route::get("/send-email", function (Request $request) {
 
     return response()->json([
         "message" => "Email job dispatched successfully",
-        "email" => $email, 
+        "email" => $email,
     ]);
 });
 
-Route::prefix("v1")->group(function(){
-   Route::get("/meals",[MealController::class,"index"]);
+Route::prefix("v1")->group(function () {
+    Route::get("/meals", [MealController::class, "index"]);
 });
 
 
@@ -86,13 +90,13 @@ Route::get('/send-email', function () {
     return response()->json(['message' => 'Invoice email dispatched']);
 });
 
-    
+
 Route::get('/send-invoice', function () {
 
-sendInvoiceJob::dispatch(
+    sendInvoiceJob::dispatch(
 
-    'samiralsaied07@gmail.com',
-);
+        'samiralsaied07@gmail.com',
+    );
 
     return response()->json([
         'message' => 'Job queued successfully'
@@ -101,15 +105,11 @@ sendInvoiceJob::dispatch(
 
 Route::prefix('v1')->group(function () {
     Route::get('/meals', [ApiMealController::class, 'index']);
-         Route::get('/categories', [ApiCategoryController::class, 'index']);
+    Route::get('/categories', [ApiCategoryController::class, 'index']);
     Route::get('/faqs', [ApiFaqController::class, 'index']);
-
-
-
-
 });
 
-Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
+Route::post('/stripe/webhook', [StripeWebhookController::class]);
 
 // Public routes - Authentication
 Route::prefix('auth')->group(function () {
@@ -151,8 +151,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{id}/set-default', [AddressController::class, 'setDefault']);
     });
 
-    Route::post('smart-lists/{id}/meals', [SmartListController::class, 'addMeal']);
-    Route::delete('smart-lists/{id}/meals/{mealId}', [SmartListController::class, 'removeMeal']);
+    Route::post('smart-lists/{smart_list}/meals', AddMealToSmartListController::class);
+    Route::delete('smart-lists/{smart_list}/meals/{meal}', RemoveMealFromSmartListController::class);
     Route::apiResource('smart-lists', SmartListController::class);
 
     Route::prefix('notification-settings')->group(function () {
@@ -219,14 +219,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('orders')->group(function () {
         Route::post('/', [OrderController::class, 'store']);
         Route::get('/', [OrderController::class, 'index']);
-        Route::get('/track', [OrderController::class, 'track']);
+        Route::get('/track', TrackOrderController::class);
         Route::get('/{id}', [OrderController::class, 'show']);
     });
 
     // Payment routes
     Route::prefix('payments')->group(function () {
-        Route::post('/stripe/checkout-session', [StripeCheckoutController::class, 'store']);
-        Route::get('/stripe/verify-session/{session_id}', [StripeCheckoutController::class, 'verifySession']);
+        Route::post('/stripe/checkout-session', CreateStripeCheckoutSessionController::class);
+        Route::get('/stripe/verify-session/{session_id}', VerifyStripeCheckoutSessionController::class);
         Route::get('/history', [PaymentController::class, 'paymentHistory']);
         Route::get('/receipt/{order}', [PaymentController::class, 'receipt']);
         Route::get('/invoice/{order}', [PaymentController::class, 'invoice']);
@@ -266,7 +266,6 @@ Route::prefix('meals')->group(function () {
     Route::get('/recommendations', [MealController::class, 'recommendations']);
     Route::get('/', [MealController::class, 'index']);
     Route::get('/{id}', [MealController::class, 'show']);
-
 });
 Route::get('/new-products', [MealController::class, 'newProducts']);
 Route::get('best-sells', [MealController::class, 'bestSells']);
