@@ -11,7 +11,7 @@ class SpecialNoteController extends Controller
 {
     public function index()
     {
-        $specialNotes = SpecialNote::all();
+        $specialNotes = SpecialNote::latest()->paginate(10);
         return response()->json([
             'success' => true,
             'data' => SpecialNoteResource::collection($specialNotes)
