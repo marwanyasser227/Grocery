@@ -84,7 +84,7 @@ class Category extends Model
             return $this->image;
         }
 
-        return asset('storage/'.$this->image);
+        return asset('storage/' . $this->image);
     }
 
     /**

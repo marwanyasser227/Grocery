@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\V1\InvoiceController;
 use App\Http\Controllers\Api\V1\MealController as ApiMealController;
 use Illuminate\Support\Facades\Route;
 use App\Traits\V1;
+use App\Http\Controllers\Api\ReviewController;
 
 use App\Jobs\SendInvoiceJob;
 /*
@@ -53,6 +54,7 @@ use App\Jobs\SendInvoiceJob;
 | be assigned to the "api" middleware group. Make something great!
 |
 */
+
 Route::get("/send-email", function (Request $request) {
     $email = $request->query('email', 'omar-elsayed@example.com');
 
@@ -63,12 +65,12 @@ Route::get("/send-email", function (Request $request) {
 
     return response()->json([
         "message" => "Email job dispatched successfully",
-        "email" => $email, 
+        "email" => $email,
     ]);
 });
 
-Route::prefix("v1")->group(function(){
-   Route::get("/meals",[MealController::class,"index"]);
+Route::prefix("v1")->group(function () {
+    Route::get("/meals", [MealController::class, "index"]);
 });
 
 
@@ -86,13 +88,13 @@ Route::get('/send-email', function () {
     return response()->json(['message' => 'Invoice email dispatched']);
 });
 
-    
+
 Route::get('/send-invoice', function () {
 
-sendInvoiceJob::dispatch(
+    sendInvoiceJob::dispatch(
 
-    'samiralsaied07@gmail.com',
-);
+        'samiralsaied07@gmail.com',
+    );
 
     return response()->json([
         'message' => 'Job queued successfully'
@@ -101,12 +103,8 @@ sendInvoiceJob::dispatch(
 
 Route::prefix('v1')->group(function () {
     Route::get('/meals', [ApiMealController::class, 'index']);
-         Route::get('/categories', [ApiCategoryController::class, 'index']);
+    Route::get('/categories', [ApiCategoryController::class, 'index']);
     Route::get('/faqs', [ApiFaqController::class, 'index']);
-
-
-
-
 });
 
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
@@ -198,9 +196,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Favorites routes
     Route::prefix('favorites')->group(function () {
         Route::get('/', [FavoriteController::class, 'index']);
-        Route::post('/{mealId}/toggle', [FavoriteController::class, 'toggle']);
-        Route::get('/{mealId}/check', [FavoriteController::class, 'check']);
-        Route::delete('/{mealId}', [FavoriteController::class, 'remove']);
+        Route::post('/{meal}/toggle', [FavoriteController::class, 'toggle']);
+        Route::get('/{meal}/check', [FavoriteController::class, 'check']);
+        Route::delete('/{meal}', [FavoriteController::class, 'remove']);
     });
 
     // Chatbot routes
@@ -266,7 +264,6 @@ Route::prefix('meals')->group(function () {
     Route::get('/recommendations', [MealController::class, 'recommendations']);
     Route::get('/', [MealController::class, 'index']);
     Route::get('/{id}', [MealController::class, 'show']);
-
 });
 Route::get('/new-products', [MealController::class, 'newProducts']);
 Route::get('best-sells', [MealController::class, 'bestSells']);
@@ -283,17 +280,18 @@ Route::prefix('offers')->group(function () {
     Route::get('/validate', [OfferController::class, 'validateOffer']);
     Route::get('/{code}', [OfferController::class, 'showByCode']);
 });
+// Categories routes
 Route::prefix('categories')->group(function () {
     Route::get('/', [CategoryController::class, 'index']);
-    Route::get('/{id}', [CategoryController::class, 'show']);
-    Route::get('/{id}/meals', [CategoryController::class, 'meals']);
+    Route::get('/{category}', [CategoryController::class, 'show']);
+    Route::get('/{category}/meals', [CategoryController::class, 'meals']);
 });
 
-// Subcategories routes
+//Subcategories routes
 Route::prefix('subcategories')->group(function () {
     Route::get('/', [SubcategoryController::class, 'index']);
-    Route::get('/{id}', [SubcategoryController::class, 'show']);
-    Route::get('/{id}/meals', [SubcategoryController::class, 'meals']);
+    Route::get('/{subcategory}', [SubcategoryController::class, 'show']);
+    Route::get('/{subcategory}/meals', [SubcategoryController::class, 'meals']);
 });
 Route::get('/faqs', [FaqController::class, 'index']);
 Route::get('/pages', [StaticPageController::class, 'index']);
@@ -308,4 +306,19 @@ Route::get('/health', function () {
         'message' => 'API is running',
         'timestamp' => now(),
     ]);
+});
+// Public reviews
+Route::prefix('reviews')->group(function () {
+    Route::get('/', [ReviewController::class, 'index']);
+    Route::get('/meal/{mealId}/stats', [ReviewController::class, 'getMealReviewStats']);
+    Route::get('/meal/{meal}', [ReviewController::class, 'getMealReviews']);
+    Route::get('/{review}', [ReviewController::class, 'show']);
+});
+
+// Protected review
+Route::middleware('auth:sanctum')->prefix('reviews')->group(function () {
+    Route::post('/', [ReviewController::class, 'store']);
+    Route::get('/user/list', [ReviewController::class, 'getUserReviews']);
+    Route::put('/{review}', [ReviewController::class, 'update']);
+    Route::delete('/{review}', [ReviewController::class, 'destroy']);
 });
