@@ -3,50 +3,54 @@
 namespace App\Jobs;
 
 use App\Mail\InvoiceMail;
+use App\Models\Order;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class SendInvoiceJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $email;
 
-    public function __construct($email)
+    public function __construct(public readonly int $orderId)
     {
-        $this->email = $email;
     }
 
-    public function handle()
+    public function handle():void
     {
-        $invoice = [
-            'invoice_no' => 100,
-            'customer'   => 'samir elsayed',
-            'amount'     =>2000,
-        ];
+        $order = Order::query()
+            ->with(['user', 'items.meal'])
+            ->findOrFail($this->orderId);
 
-        $pdf = Pdf::loadView('pdf.invoice', compact('invoice'));
+        if (! $order->user?->email) {
+            throw new \RuntimeException("Cannot send invoice for order {$order->id}: customer email is missing.");
+        }
 
-        Mail::to($this->email)->send(
+        $pdf = Pdf::loadView('invoices.show', ['order' => $order]);
+
+        Mail::to($order->user?->email)->send(
             new InvoiceMail(
-                'Attached invoice',
+                "Thank you for your payment. Your invoice for order {$order->order_number} is attached.",
                 $pdf->output()
             )
         );
 
-        Log::info('Invoice sent successfully to ' . $this->email);
+        Log::info('Invoice sent successfully to ', [
+            'order_id' => $order->id,
+            'email' => $order->user->email,
+            ]);
     }
 
-    public function failed($exception)
+    public function failed(\Throwable $exception): void
     {
-        Log::error('Failed sending invoice', [
-            'email' => $this->email,
+        Log::error('Failed sending invoice.', [
+            'order_id' => $this->orderId,
             'error' => $exception->getMessage(),
         ]);
     }

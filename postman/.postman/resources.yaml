@@ -1,0 +1,13 @@
+# Use this workspace to collaborate
+workspace:
+  id: 95de343b-432a-46a1-a979-44391a4030f7
+
+localResources:
+  collections:
+    - ../Grocery-API.postman_collection.json
+  environments:
+    - ../Grocery-API.postman_environment.json
+
+cloudResources:
+  collections:
+    ../postman/collections/Grocery API: 54493120-a77d-492b-acff-fed3024074e9

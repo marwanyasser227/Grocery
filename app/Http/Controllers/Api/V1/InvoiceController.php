@@ -17,7 +17,7 @@ class InvoiceController extends Controller
 
 
 
-    $user = auth()->user();
+        $user = auth()->user();
 
         $email = $user ? ($user->email ?? null) : null;
 
